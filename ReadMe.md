@@ -2,6 +2,10 @@ XStreamingReader - Streaming for Linq to Xml
 ===
 Xml Stream(XmlReader) to IEnumerable<XElement> for Windows Phone(memory save) or parse large Xml.
 
+Note
+---
+Archive, import from Codeplex.
+
 Features
 ---
 
