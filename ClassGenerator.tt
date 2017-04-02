@@ -1,0 +1,96 @@
+﻿<#@ template language="C#" #>
+<#@ output extension="cs" #>
+<#@ assembly Name="System.Core.dll" #>
+<#@ assembly Name="System.Net.dll" #>
+<#@ assembly Name="System.Xml.dll" #>
+<#@ assembly Name="System.Xml.Linq.dll" #>
+<#@ import namespace="System" #>
+<#@ import namespace="System.Net" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Xml.Linq" #>
+<#@ import namespace="System.Text.RegularExpressions" #>
+<#
+    // customise string
+    string XmlString = new WebClient().DownloadString("http://twitter.com/statuses/public_timeline.xml");
+	// string XmlString = "<xml><foo>a</foo><foo>b</foo></xml>"
+    const string DescendantsName = "status"; // select class root
+    const string Namespace = "Twitter"; // namespace
+    
+    var rootXml = XElement.Parse(XmlString).Descendants(DescendantsName).First();
+    XElement[] classes = ElementsHasChild(rootXml).ToArray();
+#>
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Xml.Linq;
+
+namespace <#= Namespace #>
+{
+<#
+    foreach(var cls in classes)
+    {
+        WriteClass(cls);
+    }
+#>
+}
+
+<#+
+    string ToPascalCase(string s)
+    {
+        return Regex.Replace(s, "(?:^|_| )(.)", m => m.Groups[1].Value.ToUpper());
+    }
+    
+    IEnumerable<XElement> ElementsHasChild(XElement root)
+    {
+        return Enumerable.Repeat(root, 1).Concat(
+            root.Elements()
+                .Where(x => x.HasElements)
+                .SelectMany(x => ElementsHasChild(x)));
+    }
+    
+    void WriteClass(XElement element)
+    {
+        var className = ToPascalCase(element.Name.LocalName);
+        var childs = element.Elements()
+            .GroupBy(x => x.Name.LocalName)
+            .Select(g => new { IsGroup = g.Count() > 1, x = g.First() })
+            .Select(a => new
+            {
+                a.IsGroup,
+                a.x.HasElements,
+                Element = a.x.Name.LocalName,
+                Type = (a.x.HasElements ? ToPascalCase(a.x.Name.LocalName) : "string")
+                    + ((a.IsGroup) ? "[]" : ""),
+                Property = ToPascalCase(a.x.Name.LocalName)
+            });
+#>
+    public class <#= className #>
+    {
+<#+
+foreach(var child in childs)
+{
+#>
+            public <#= child.Type #> <#= child.Property #> { get; set; }
+<#+}#>
+
+            public <#= className #>(XElement element)
+            {
+<#+
+foreach(var child in childs)
+{
+if(child.HasElements && child.IsGroup){
+#>
+                this.<#=child.Property#> = element.Elements("<#=child.Element#>").Select(x => new <#=child.Property#>(x)).ToArray();
+<#+ }else if(child.HasElements && !child.IsGroup){ #>
+                this.<#=child.Property#> = new <#=child.Type#>(element.Element("<#=child.Element#>"));
+<#+ }else if(!child.HasElements && child.IsGroup){ #>
+                this.<#=child.Property#> = element.Elements("<#=child.Element#>").Select(x => (string)x).ToArray();
+<#+ }else { #>
+                this.<#=child.Property#> = (<#=child.Type#>)element.Element("<#=child.Element#>");
+<#+ }
+}#>
+            }
+    }
+    
+<#+}#>
