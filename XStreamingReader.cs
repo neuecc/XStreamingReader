@@ -4,8 +4,7 @@
 *
 * created and maintained by neuecc <ils@neue.cc>
 * licensed under Microsoft Public License(Ms-PL)
-* http://neue.cc/
-* http://xstreamingreader.codeplex.com/
+* https://github.com/neuecc/XStreamingReader/
 *--------------------------------------------------------------------------*/
 
 using System;
